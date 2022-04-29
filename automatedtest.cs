@@ -23,22 +23,24 @@ public class Pathfinder
         }
     }
 
-    private static HashSet<string> visitedLinks = new HashSet<string>();
+    private static HashSet<string> visitedLinks = new HashSet<string>(); // Visited websites
+    // visitedLinkTitles stores page title and link, otherwise saves page title as the link
     private static Dictionary<string, string> visitedLinkTitles = new Dictionary<string, string>();
-    private static Queue<string> unvisitedLinks = new Queue<string>();
+    private static Queue<string> unvisitedLinks = new Queue<string>(); // Websitse to be visisted
     private static Regex guidRegex
         = new Regex(@"[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                RegexOptions.Compiled | RegexOptions.IgnoreCase); // Filters GUID's from queried pages
 
+    // Starting page
     private static string rootPage = "https://christophermartin77.wixsite.com/indian-lake-animal-s";
 
     private static Page currentPage = new Page(rootPage);
 
-    private static IWebDriver newDriver()
+    private static IWebDriver newDriver() // Can optimize for other driver support
     {
         FirefoxOptions options = new FirefoxOptions();
         options.AddArgument("--headless");
-        string driverPath = @"G:\My Drive\CSharp\WebScraper\WebScraper\";
+        string driverPath = @"G:\My Drive\CSharp\WebScraper\WebScraper\"; // Need to update filepaths
         return new FirefoxDriver(driverPath, options);
     }
     private static IWebDriver driver = newDriver();
@@ -52,21 +54,14 @@ public class Pathfinder
 
         while (unvisitedLinks.Count > 0)
         {
-            if (unvisitedLinks.Peek().Contains("Account/SignOut")
-                    && unvisitedLinks.Count > 1)
-            {
-                unvisitedLinks.Enqueue(unvisitedLinks.Dequeue());
-                continue;
-            }
-
-            currentPage = new Page(unvisitedLinks.Dequeue());
+            currentPage = new Page(unvisitedLinks.Dequeue()); // Enters page at the top of the stack
 
             try
             {
                 driver.Navigate().GoToUrl(currentPage.link);
                 if (!driver.Url.Equals(currentPage.link))
                 {
-                    if (!driver.Url.StartsWith(rootPage))
+                    if (!driver.Url.StartsWith(rootPage)) // Ensures link isn't a redirect
                     {
                         continue;
                     }
@@ -83,17 +78,17 @@ public class Pathfinder
                 continue;
             }
 
-            visitedLinks.Add(currentPage.link);
+            visitedLinks.Add(currentPage.link); // Adds page to visitedLinks
             Console.WriteLine($"Visited page: {currentPage.link}");
             
             htmlDoc.LoadHtml(driver.PageSource); // This takes a while, faster on better connections.
 
-            if (driver.Title.Equals(""))
+            if (driver.Title.Equals("")) // Adds page to visitedLinkTitles
                 visitedLinkTitles.Add(currentPage.link, currentPage.link);
             else
                 visitedLinkTitles.Add(currentPage.link, driver.Title);
             
-            if (currentPage.link.EndsWith("Site/SignIn"))
+            if (currentPage.link.EndsWith("Site/SignIn")) // Redirect if login detected
             {
                 LogIn();
             }
@@ -104,19 +99,12 @@ public class Pathfinder
         Console.WriteLine($"\n\nFound {visitedLinks.Count} total pages\n");
     }
 
+    // Needs work, unable to detect login element
     public static void LogIn()
     {
         driver.FindElement(By.Id("emailAddress")).SendKeys("arnavf3@vaticanakq.com");
         driver.FindElement(By.Id("password")).SendKeys("shelteradmin");
         driver.FindElement(By.Id("signInButton")).Click();
-
-        Thread.Sleep(750);
-        driver.FindElement(By.Id("siteList")).Click();
-        Thread.Sleep(500);
-        driver.FindElement(By.XPath("//*[@id='siteDialog']/div[1]/ul/div/li[5]")).Click();
-        Thread.Sleep(500);
-        driver.FindElement(By.Id("selectSite")).Click();
-        Thread.Sleep(500);
 
         unvisitedLinks.Enqueue(driver.Url);
     }
